@@ -11,6 +11,7 @@ import com.smockin.mockserver.dto.MockServerState;
 import com.smockin.mockserver.dto.MockedServerConfigDTO;
 import com.smockin.mockserver.exception.MockServerException;
 import com.smockin.mockserver.proxy.ProxyServer;
+import com.smockin.mockserver.proxy.SmockinSelfSignedSslEngineSource;
 import com.smockin.mockserver.service.*;
 import com.smockin.mockserver.service.dto.RestfulResponseDTO;
 import com.smockin.mockserver.service.ws.SparkWebSocketEchoService;
@@ -26,7 +27,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import spark.Request;
 import spark.Response;
-import spark.Spark;
 
 import java.io.File;
 import java.io.IOException;
@@ -65,7 +65,8 @@ public class MockedRestServerEngine implements MockServerEngine<MockedServerConf
     private ProxyServer proxyServer;
 
     private final Object monitor = new Object();
-    private MockServerState serverState = new MockServerState(false, 0);
+    private MockServerState serverState = new MockServerState(false, 0, false);
+    private spark.Service server = null;
 
     @Override
     public void start(final MockedServerConfigDTO config, final List<RestfulMock> mocks) throws MockServerException {
@@ -88,7 +89,7 @@ public class MockedRestServerEngine implements MockServerEngine<MockedServerConf
         // Next handle all HTTP SSE web service routes
         buildSSEEndpoints(mocks);
 
-        initServer(config.getPort());
+        initServer(config.getPort(), config.isSecure());
 
         initProxyServer(activeMocks, config);
 
@@ -108,7 +109,7 @@ public class MockedRestServerEngine implements MockServerEngine<MockedServerConf
 
             serverSideEventService.interruptAndClearAllHeartBeatThreads();
 
-            Spark.stop();
+            server.stop();
 
             // Having dug around the source code, 'Spark.stop()' runs off a different thread when stopping the server and removing it's state such as routes, etc.
             // This means that calling 'Spark.port()' immediately after stop, results in an IllegalStateException, as the
@@ -119,6 +120,10 @@ public class MockedRestServerEngine implements MockServerEngine<MockedServerConf
 
             synchronized (monitor) {
                 serverState.setRunning(false);
+                serverState.setPort(0);
+                serverState.setSecure(false);
+
+                server = null;
             }
 
             clearState();
@@ -131,21 +136,22 @@ public class MockedRestServerEngine implements MockServerEngine<MockedServerConf
 
     }
 
-    void initServer(final int port) throws MockServerException {
+    void initServer(final int port, final boolean secure) throws MockServerException {
         logger.debug("initServer called");
 
         try {
 
             clearState();
 
-            Spark.init();
+            server.init();
 
             // Blocks the current thread (using a CountDownLatch under the hood) until the server is fully initialised.
-            Spark.awaitInitialization();
+            server.awaitInitialization();
 
             synchronized (monitor) {
                 serverState.setRunning(true);
                 serverState.setPort(port);
+                serverState.setSecure(secure);
             }
 
         } catch (Throwable ex) {
@@ -160,8 +166,19 @@ public class MockedRestServerEngine implements MockServerEngine<MockedServerConf
         if (logger.isDebugEnabled())
             logger.debug(config.toString());
 
-        Spark.port(config.getPort());
-        Spark.threadPool(config.getMaxThreads(), config.getMinThreads(), config.getTimeOutMillis());
+        synchronized (monitor) {
+            server = spark.Service.ignite();
+        }
+
+        server.port(config.getPort());
+
+        if (config.isSecure()) {
+            logger.debug("Running HTTP Server over HTTPS");
+            final SmockinSelfSignedSslEngineSource selfSignedSource = GeneralUtils.retrieveSelfSignedSSLCert("rest", "smockinrest");
+            server.secure(selfSignedSource.getKeyStoreFile().getAbsolutePath(), selfSignedSource.PASSWORD, null, null);
+        }
+
+        server.threadPool(config.getMaxThreads(), config.getMinThreads(), config.getTimeOutMillis());
     }
 
     void initProxyServer(final Map<String, List<RestMethodEnum>> activeMocks, final MockedServerConfigDTO config) {
@@ -202,7 +219,7 @@ public class MockedRestServerEngine implements MockServerEngine<MockedServerConf
             if (RestMockTypeEnum.PROXY_WS.equals(m.getMockType())) {
                 // Create an echo service instance per web socket route, as we need to hold the path as state within this.
                 final String path = buildUserPath(m);
-                Spark.webSocket(path, new SparkWebSocketEchoService(m.getExtId(), path, m.getWebSocketTimeoutInMillis(), m.isProxyPushIdOnConnect(), webSocketService));
+                server.webSocket(path, new SparkWebSocketEchoService(m.getExtId(), path, m.getWebSocketTimeoutInMillis(), m.isProxyPushIdOnConnect(), webSocketService));
             }
         });
     }
@@ -219,7 +236,7 @@ public class MockedRestServerEngine implements MockServerEngine<MockedServerConf
 
                 // NOTE, Java Spark does not currently provide support for NIO SSE. This code therefore BLOCKS the request
                 // thread until the connection is closed by either party.
-                Spark.get(buildUserPath(m), (req, res) -> processSSERequest(m, req, res));
+                server.get(buildUserPath(m), (req, res) -> processSSERequest(m, req, res));
 
             }
 
@@ -250,19 +267,19 @@ public class MockedRestServerEngine implements MockServerEngine<MockedServerConf
 
                 switch (method) {
                     case GET:
-                        Spark.get(path, (req, res) -> processRequest(m, req, res));
+                        server.get(path, (req, res) -> processRequest(m, req, res));
                         break;
                     case POST:
-                        Spark.post(path, (req, res) -> processRequest(m, req, res));
+                        server.post(path, (req, res) -> processRequest(m, req, res));
                         break;
                     case PUT:
-                        Spark.put(path, (req, res) -> processRequest(m, req, res));
+                        server.put(path, (req, res) -> processRequest(m, req, res));
                         break;
                     case DELETE:
-                        Spark.delete(path, (req, res) -> processRequest(m, req, res));
+                        server.delete(path, (req, res) -> processRequest(m, req, res));
                         break;
                     case PATCH:
-                        Spark.patch(path, (req, res) -> processRequest(m, req, res));
+                        server.patch(path, (req, res) -> processRequest(m, req, res));
                         break;
                     default:
                         throw new MockServerException("Unsupported mock definition method type : " + m.getMethod());
@@ -372,7 +389,7 @@ public class MockedRestServerEngine implements MockServerEngine<MockedServerConf
             return;
         }
 
-        Spark.options("/*", (request, response) -> {
+        server.options("/*", (request, response) -> {
 
             final String accessControlRequestHeaders = request.headers("Access-Control-Request-Headers");
 
@@ -389,7 +406,7 @@ public class MockedRestServerEngine implements MockServerEngine<MockedServerConf
             return HttpStatus.OK.name();
         });
 
-        Spark.before((request, response) -> {
+        server.before((request, response) -> {
             response.header("Access-Control-Allow-Origin", "*");
             response.header("Access-Control-Request-Method", "GET,PUT,POST,DELETE,OPTIONS");
             response.header("Access-Control-Allow-Headers", "*");

@@ -4,22 +4,35 @@ import com.smockin.admin.dto.HttpClientCallDTO;
 import com.smockin.admin.dto.response.HttpClientResponseDTO;
 import com.smockin.admin.exception.ValidationException;
 import com.smockin.mockserver.dto.MockServerState;
-import com.smockin.mockserver.exception.MockServerException;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
+import org.apache.http.client.fluent.Executor;
 import org.apache.http.client.fluent.Request;
+import org.apache.http.config.RegistryBuilder;
+import org.apache.http.conn.socket.ConnectionSocketFactory;
+import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 
+import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -53,7 +66,8 @@ public class HttpClientServiceImpl implements HttpClientService {
                 return new HttpClientResponseDTO(404);
             }
 
-            dto.setUrl("http://localhost:" + state.getPort() + dto.getUrl());
+            dto.setUrl(((state.isSecure()) ? "https" : "http")
+                    + "://localhost:" + state.getPort() + dto.getUrl());
 
             switch (dto.getMethod()) {
                 case GET:
@@ -70,20 +84,21 @@ public class HttpClientServiceImpl implements HttpClientService {
                     throw new ValidationException("Invalid / Unsupported method: " + dto.getMethod());
             }
 
-        } catch (IOException | MockServerException ex) {
+        } catch (Exception ex) {
+            logger.error("Error calling mock service", ex);
             return new HttpClientResponseDTO(404);
         }
 
     }
 
-    HttpClientResponseDTO get(final HttpClientCallDTO reqDto) throws IOException {
+    HttpClientResponseDTO get(final HttpClientCallDTO reqDto) throws Exception {
 
         final Request request = Request.Get(reqDto.getUrl());
 
         return executeRequest(request, reqDto.getHeaders());
     }
 
-    HttpClientResponseDTO post(final HttpClientCallDTO reqDto) throws IOException {
+    HttpClientResponseDTO post(final HttpClientCallDTO reqDto) throws Exception {
 
         final Request request = Request.Post(reqDto.getUrl());
 
@@ -92,7 +107,7 @@ public class HttpClientServiceImpl implements HttpClientService {
         return executeRequest(request, reqDto.getHeaders());
     }
 
-    HttpClientResponseDTO put(final HttpClientCallDTO reqDto) throws IOException {
+    HttpClientResponseDTO put(final HttpClientCallDTO reqDto) throws Exception {
 
         final Request request = Request.Put(reqDto.getUrl());
 
@@ -101,14 +116,14 @@ public class HttpClientServiceImpl implements HttpClientService {
         return executeRequest(request, reqDto.getHeaders());
     }
 
-    HttpClientResponseDTO delete(final HttpClientCallDTO reqDto) throws IOException {
+    HttpClientResponseDTO delete(final HttpClientCallDTO reqDto) throws Exception {
 
         final Request request = Request.Delete(reqDto.getUrl());
 
         return executeRequest(request, reqDto.getHeaders());
     }
 
-    HttpClientResponseDTO patch(final HttpClientCallDTO reqDto) throws IOException {
+    HttpClientResponseDTO patch(final HttpClientCallDTO reqDto) throws Exception {
 
         final Request request = Request.Patch(reqDto.getUrl())
                 .bodyByteArray((reqDto.getBody() != null)?reqDto.getBody().getBytes():null);
@@ -162,11 +177,11 @@ public class HttpClientServiceImpl implements HttpClientService {
         return IOUtils.toString(httpResponse.getEntity().getContent(), StandardCharsets.UTF_8.name());
     }
 
-    HttpClientResponseDTO executeRequest(final Request request, final Map<String, String> requestHeaders) throws IOException {
+    HttpClientResponseDTO executeRequest(final Request request, final Map<String, String> requestHeaders) throws Exception {
 
         applyRequestHeaders(request, requestHeaders);
 
-        final HttpResponse httpResponse = request.execute().returnResponse();
+        final HttpResponse httpResponse = processRequest(request);
 
         return new HttpClientResponseDTO(
                 httpResponse.getStatusLine().getStatusCode(),
@@ -207,6 +222,28 @@ public class HttpClientServiceImpl implements HttpClientService {
         }
 
         request.bodyByteArray((reqDto.getBody() != null)?reqDto.getBody().getBytes():null);
+    }
+
+    HttpResponse processRequest(final Request request) throws Exception {
+        final Executor executor = Executor.newInstance(noSslHttpClient());
+        return executor.execute(request).returnResponse();
+    }
+
+    private CloseableHttpClient noSslHttpClient() throws KeyManagementException, NoSuchAlgorithmException, KeyStoreException {
+
+        final SSLContext sslContext = new SSLContextBuilder()
+            .loadTrustMaterial(null, (x509CertChain, authType) -> true)
+            .build();
+
+        return HttpClientBuilder.create()
+            .setSSLContext(sslContext)
+            .setConnectionManager(
+                new PoolingHttpClientConnectionManager(
+                    RegistryBuilder.<ConnectionSocketFactory>create()
+                        .register("http", PlainConnectionSocketFactory.INSTANCE)
+                        .register("https", new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE))
+                        .build()
+                )).build();
     }
 
     private void debugDTO(final HttpClientCallDTO dto) {

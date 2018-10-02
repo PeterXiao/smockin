@@ -18,6 +18,7 @@ app.controller('serverConfigController', function($scope, $location, $uibModalIn
     $scope.maxThreadsLabel = 'Max Threads';
     $scope.minThreadsLabel = 'Min Threads';
     $scope.timeOutMillisLabel = 'Idle Time out';
+    $scope.secureLabel = 'Serve mocks over HTTPS';
     $scope.autoStartLabel = 'Auto start on application launch';
     $scope.autoRefreshLabel = 'Auto restart after endpoint updates';
     $scope.enableCorsLabel = 'Enable Cross-Origin Resource Sharing (across all endpoints)';
@@ -69,6 +70,7 @@ app.controller('serverConfigController', function($scope, $location, $uibModalIn
         "maxThreads" : 0,
         "minThreads" : 0,
         "timeOutMillis" : 0,
+        "secure" : false,
         "autoStart" : false,
         "autoRefresh" : false,
         "enableCors" : false,
@@ -115,6 +117,7 @@ app.controller('serverConfigController', function($scope, $location, $uibModalIn
             "maxThreads" : $scope.serverConfig.maxThreads,
             "minThreads" : $scope.serverConfig.minThreads,
             "timeOutMillis" : $scope.serverConfig.timeOutMillis,
+            "secure" : $scope.serverConfig.secure,
             "autoStart" : $scope.serverConfig.autoStart,
             "autoRefresh" : $scope.serverConfig.autoRefresh,
             "nativeProperties" : {}
@@ -167,6 +170,7 @@ app.controller('serverConfigController', function($scope, $location, $uibModalIn
                     "maxThreads" : data.maxThreads,
                     "minThreads" : data.minThreads,
                     "timeOutMillis" : data.timeOutMillis,
+                    "secure" : data.secure,
                     "autoStart" : data.autoStart,
                     "autoRefresh" : data.autoRefresh,
                     "enableCors" : (data.nativeProperties.ENABLE_CORS != null && data.nativeProperties.ENABLE_CORS.toUpperCase() == "TRUE"),

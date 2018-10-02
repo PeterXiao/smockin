@@ -39,7 +39,7 @@ public class MockedJmsServerEngine implements MockServerEngine<MockedServerConfi
     private BrokerService broker = null;
     private ActiveMQConnectionFactory connectionFactory = null; // NOTE this is thread safe
     private final Object monitor = new Object();
-    private MockServerState serverState = new MockServerState(false, 0);
+    private MockServerState serverState = new MockServerState(false, 0, false);
 
     @Override
     public void start(final MockedServerConfigDTO config, final List<JmsMock> data) throws MockServerException {

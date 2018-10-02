@@ -30,7 +30,7 @@ public class ProxyServer implements BaseServerEngine<Integer[], Map<String, List
 
     private HttpProxyServer httpProxyServer;
     private final Object monitor = new Object();
-    private MockServerState serverState = new MockServerState(false, 0);
+    private MockServerState serverState = new MockServerState(false, 0, false);
 
     @Autowired
     private ProxyServerUtils proxyServerUtils;

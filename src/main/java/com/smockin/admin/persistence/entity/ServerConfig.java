@@ -30,6 +30,10 @@ public class ServerConfig extends Identifier {
     @Column(name = "TIME_OUT_MILLIS", nullable = false)
     private Integer timeOutMillis;
 
+    @ColumnDefault("false")
+    @Column(name = "SECURE", nullable = false)
+    private boolean secure;
+
     @Column(name = "AUTO_START", nullable = false)
     private boolean autoStart;
 
@@ -80,6 +84,13 @@ public class ServerConfig extends Identifier {
     }
     public void setTimeOutMillis(Integer timeOutMillis) {
         this.timeOutMillis = timeOutMillis;
+    }
+
+    public boolean isSecure() {
+        return secure;
+    }
+    public void setSecure(boolean secure) {
+        this.secure = secure;
     }
 
     public boolean isAutoStart() {

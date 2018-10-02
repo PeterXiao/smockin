@@ -1,6 +1,7 @@
 package com.smockin.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smockin.mockserver.proxy.SmockinSelfSignedSslEngineSource;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -285,6 +286,17 @@ public final class GeneralUtils {
             }
         }
 
+    }
+
+    public static SmockinSelfSignedSslEngineSource retrieveSelfSignedSSLCert(final String subDir, final String keyStoreName) {
+
+        final File f = new File(System.getProperty("user.home") + "/.smockin/certs/" + subDir);
+
+        if (!f.exists()) {
+            f.mkdirs();
+        }
+
+        return new SmockinSelfSignedSslEngineSource(f.getAbsolutePath(), keyStoreName, true, true);
     }
 
 }

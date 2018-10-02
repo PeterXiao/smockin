@@ -17,6 +17,8 @@ app.controller('tcpDashboardController', function($scope, $window, $rootScope, $
     translations.push({ "k" : "PROXY_WS", "v" : "WebSocket Proxied" });
     translations.push({ "k" : "PROXY_SSE", "v" : "SSE Proxied" });
 
+    var protocol = 'HTTP';
+
 
     //
     // Labels
@@ -132,27 +134,38 @@ app.controller('tcpDashboardController', function($scope, $window, $rootScope, $
 
     $scope.startTcpMockServer = function() {
 
-        utils.showLoadingOverlay('Starting HTTP Server');
+        loadMockServerConfig(function(configData) {
 
-        restClient.doPost($http, '/mockedserver/rest/start', {}, function(status, data) {
-
-            utils.hideLoadingOverlay();
-
-            if (status == 200) {
-                $scope.mockServerStatus = MockServerRunningStatus;
-
-                var alertMsg = "HTTP Server Started (on port " + String(data.port) + ")";
-
-                if (data.nativeProperties != null
-                        && data.nativeProperties.PROXY_SERVER_ENABLED == "TRUE") {
-                    alertMsg += " with proxy server (on port 8010)";
-                }
-
-                showAlert(alertMsg, "success");
+            if (configData == null) {
+                showAlert(globalVars.GeneralErrorMessage);
                 return;
             }
 
-            showAlert(globalVars.GeneralErrorMessage);
+            setProtocol(configData.secure);
+
+            utils.showLoadingOverlay('Starting ' + getProtocol() + ' Server');
+
+            restClient.doPost($http, '/mockedserver/rest/start', {}, function(status, data) {
+
+                utils.hideLoadingOverlay();
+
+                if (status == 200) {
+                    $scope.mockServerStatus = MockServerRunningStatus;
+
+                    var alertMsg = getProtocol() + " Server Started (on port " + String(data.port) + ")";
+
+                    if (data.nativeProperties != null
+                            && data.nativeProperties.PROXY_SERVER_ENABLED == "TRUE") {
+                        alertMsg += " with proxy server (on port 8010)";
+                    }
+
+                    showAlert(alertMsg, "success");
+                    return;
+                }
+
+                showAlert(globalVars.GeneralErrorMessage);
+            });
+
         });
 
     };
@@ -164,7 +177,7 @@ app.controller('tcpDashboardController', function($scope, $window, $rootScope, $
 
     $scope.stopTcpMockServer = function () {
 
-        utils.showLoadingOverlay('Stopping HTTP Server');
+        utils.showLoadingOverlay('Stopping ' + getProtocol() + ' Server');
 
         restClient.doPost($http, '/mockedserver/rest/stop', {}, function(status, data) {
 
@@ -287,7 +300,7 @@ app.controller('tcpDashboardController', function($scope, $window, $rootScope, $
 
     function loadTcpServerStatus() {
 
-        utils.checkRestServerStatus(function(running, port) {
+        utils.checkRestServerStatus(function(running, port, secure) {
 
             if (running == null) {
                 showAlert(globalVars.GeneralErrorMessage);
@@ -297,6 +310,7 @@ app.controller('tcpDashboardController', function($scope, $window, $rootScope, $
             if (RestartServerRequired && running) {
 
                 $scope.mockServerStatus = MockServerRestartStatus;
+                setProtocol(secure);
 
                 restartTcpMockServer(function(port) {
 
@@ -317,9 +331,22 @@ app.controller('tcpDashboardController', function($scope, $window, $rootScope, $
 
     }
 
+    function loadMockServerConfig(callback) {
+
+        restClient.doGet($http, '/mockedserver/config/' + RestfulServerType, function(status, data) {
+            if (status == 200) {
+                callback(data);
+                return;
+            }
+
+            callback();
+        });
+
+    }
+
     function restartTcpMockServer(callback) {
 
-        utils.showLoadingOverlay('Updating HTTP Server');
+        utils.showLoadingOverlay('Updating ' + getProtocol() + ' Server');
 
         restClient.doPost($http, '/mockedserver/rest/restart', {}, function(status, data) {
 
@@ -331,6 +358,14 @@ app.controller('tcpDashboardController', function($scope, $window, $rootScope, $
             callback();
         });
 
+    }
+
+    function setProtocol(isSecure) {
+        protocol = (isSecure) ? 'HTTPS' : 'HTTP';
+    }
+
+    function getProtocol() {
+        return protocol;
     }
 
 

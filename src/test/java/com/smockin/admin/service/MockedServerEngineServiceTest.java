@@ -394,7 +394,7 @@ public class MockedServerEngineServiceTest {
     public void getRestServerStateTest() throws MockServerException {
 
         // Setup
-        Mockito.when(mockedRestServerEngine.getCurrentState()).thenReturn(new MockServerState(true, 8001));
+        Mockito.when(mockedRestServerEngine.getCurrentState()).thenReturn(new MockServerState(true, 8001, false));
 
         // Test
         final MockServerState mockServerState = mockedServerEngineService.getRestServerState();

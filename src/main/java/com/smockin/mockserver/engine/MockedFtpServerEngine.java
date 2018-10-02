@@ -41,7 +41,7 @@ public class MockedFtpServerEngine implements MockServerEngine<MockedServerConfi
     private FtpServer server = null;        // not sure this is thread safe, so handling in synchronised block
 
     private final Object monitor = new Object();
-    private MockServerState serverState = new MockServerState(false, 0);
+    private MockServerState serverState = new MockServerState(false, 0, false);
 
     @Autowired
     private FtpMockDAO ftpMockDAO;

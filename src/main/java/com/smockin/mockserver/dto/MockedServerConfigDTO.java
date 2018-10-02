@@ -15,6 +15,7 @@ public class MockedServerConfigDTO {
     private Integer maxThreads;
     private Integer minThreads;
     private Integer timeOutMillis;
+    private boolean secure;
     private boolean autoStart;
     private boolean autoRefresh;
     private Map<String, String> nativeProperties = new HashMap<>();
@@ -22,12 +23,13 @@ public class MockedServerConfigDTO {
     public MockedServerConfigDTO() {
     }
 
-    public MockedServerConfigDTO(final ServerTypeEnum serverType, Integer port, Integer maxThreads, Integer minThreads, Integer timeOutMillis, boolean autoStart, boolean autoRefresh, Map<String, String> nativeProperties) {
+    public MockedServerConfigDTO(final ServerTypeEnum serverType, Integer port, Integer maxThreads, Integer minThreads, Integer timeOutMillis, boolean secure, boolean autoStart, boolean autoRefresh, Map<String, String> nativeProperties) {
         this.serverType = serverType;
         this.port = port;
         this.maxThreads = maxThreads;
         this.minThreads = minThreads;
         this.timeOutMillis = timeOutMillis;
+        this.secure = secure;
         this.autoStart = autoStart;
         this.autoRefresh = autoRefresh;
         this.nativeProperties = nativeProperties;
@@ -68,6 +70,13 @@ public class MockedServerConfigDTO {
         this.timeOutMillis = timeOutMillis;
     }
 
+    public boolean isSecure() {
+        return secure;
+    }
+    public void setSecure(boolean secure) {
+        this.secure = secure;
+    }
+
     public boolean isAutoStart() {
         return autoStart;
     }
@@ -93,10 +102,11 @@ public class MockedServerConfigDTO {
     public String toString() {
         return "Mocked Server Config :- "
                 + " ServerType : " + serverType
-                + " Port : " + port
+                + ", Port : " + port
                 + ", MaxThreads : " + maxThreads
                 + ", MinThreads : " + minThreads
                 + ", TimeOutMillis : " + timeOutMillis
+                + ", Secure : " + secure
                 + ", AutoStart : " + autoStart
                 + ", AutoRefresh : " + autoRefresh;
     }

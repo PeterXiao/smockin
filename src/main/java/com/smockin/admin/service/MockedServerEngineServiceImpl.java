@@ -236,6 +236,7 @@ public class MockedServerEngineServiceImpl implements MockedServerEngineService 
                 serverConfig.getMaxThreads(),
                 serverConfig.getMinThreads(),
                 serverConfig.getTimeOutMillis(),
+                serverConfig.isSecure(),
                 serverConfig.isAutoStart(),
                 serverConfig.isAutoRefresh(),
                 serverConfig.getNativeProperties()
@@ -261,6 +262,7 @@ public class MockedServerEngineServiceImpl implements MockedServerEngineService 
         serverConfig.setMaxThreads(config.getMaxThreads());
         serverConfig.setMinThreads(config.getMinThreads());
         serverConfig.setTimeOutMillis(config.getTimeOutMillis());
+        serverConfig.setSecure(config.isSecure());
         serverConfig.setAutoStart(config.isAutoStart());
         serverConfig.setAutoRefresh(config.isAutoRefresh());
 

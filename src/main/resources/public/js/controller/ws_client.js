@@ -88,7 +88,7 @@ app.controller('wsClientController', function($scope, $location, $http, $timeout
         }
 
         // Check the mock server is running and the port no
-        utils.checkRestServerStatus(function(running, port) {
+        utils.checkRestServerStatus(function(running, port, secure) {
 
             if (running == null) {
                 showAlert(globalVars.GeneralErrorMessage);
@@ -102,8 +102,13 @@ app.controller('wsClientController', function($scope, $location, $http, $timeout
 
             try {
 
+                if (secure) {
+                    // TODO open browser window at "https://localhost:" + port + $scope.clientRequest.url
+                }
+
                 // Establish connection to WS endpoint
-                wsSocket = new WebSocket("ws://localhost:" + port + $scope.clientRequest.url);
+                var protocol = (secure) ? "wss://" : "ws://";
+                wsSocket = new WebSocket(protocol + "localhost:" + port + $scope.clientRequest.url);
 
                 applyWSListeners();
 

@@ -154,7 +154,7 @@ app.service('utils', function($uibModal, globalVars, restClient, $http, auth) {
         restClient.doGet($http, '/mockedserver/rest/status', function(status, data) {
 
             if (status == 200) {
-                callback(data.running, data.port);
+                callback(data.running, data.port, data.secure);
                 return;
             }
 

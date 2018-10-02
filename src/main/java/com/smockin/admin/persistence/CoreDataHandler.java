@@ -71,6 +71,7 @@ public class CoreDataHandler {
             restServerConfig.setMaxThreads(100);
             restServerConfig.setMinThreads(10);
             restServerConfig.setTimeOutMillis(30000);
+            restServerConfig.setSecure(false);
             restServerConfig.setAutoStart(false);
             restServerConfig.setAutoRefresh(false);
             restServerConfig.getNativeProperties().put(GeneralUtils.ENABLE_CORS_PARAM, "false");
@@ -88,6 +89,7 @@ public class CoreDataHandler {
             jmsServerConfig.setMaxThreads(10);
             jmsServerConfig.setMinThreads(0);
             jmsServerConfig.setTimeOutMillis(0);
+            jmsServerConfig.setSecure(false);
             jmsServerConfig.setAutoStart(false);
             jmsServerConfig.setAutoRefresh(false);
             jmsServerConfig.getNativeProperties().put(GeneralUtils.BROKER_URL_PARAM, "tcp://localhost:");
@@ -106,6 +108,7 @@ public class CoreDataHandler {
             ftpServerConfig.setMaxThreads(0);
             ftpServerConfig.setMinThreads(0);
             ftpServerConfig.setTimeOutMillis(0);
+            ftpServerConfig.setSecure(false);
             ftpServerConfig.setAutoStart(false);
             ftpServerConfig.setAutoRefresh(false);
 
